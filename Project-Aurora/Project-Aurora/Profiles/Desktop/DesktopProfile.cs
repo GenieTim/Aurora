@@ -4,6 +4,10 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
 using System.Windows.Forms;
+using Aurora.Settings.Overrides.Logic;
+using Aurora.EffectsEngine;
+using System.Runtime.Serialization;
+using System.Linq;
 
 namespace Aurora.Profiles.Desktop
 {
@@ -30,9 +34,38 @@ namespace Aurora.Profiles.Desktop
             
         }
 
+        private void setVolumeOverlay()
+        {
+            OverlayLayers.Add(new Layer("Volume Overlay", new PercentGradientLayerHandler()
+            {
+                Properties = new PercentGradientLayerHandlerProperties()
+                {
+                    _Sequence = new KeySequence(new Devices.DeviceKeys[] {
+                            Devices.DeviceKeys.F1, Devices.DeviceKeys.F2, Devices.DeviceKeys.F3, Devices.DeviceKeys.F4,
+                            Devices.DeviceKeys.F5, Devices.DeviceKeys.F6, Devices.DeviceKeys.F7, Devices.DeviceKeys.F8,
+                            Devices.DeviceKeys.F9, Devices.DeviceKeys.F10, Devices.DeviceKeys.F11, Devices.DeviceKeys.F12
+                        }),
+                    _Gradient = new EffectsEngine.EffectBrush()
+                    {
+                        type = EffectBrush.BrushType.Linear,
+                        colorGradients = new SortedDictionary<float, Color> {
+                                { 0f, Color.FromArgb(255, 0, 255, 0) },
+                                { 0.5f, Color.OrangeRed },
+                                { 1f, Color.Red }
+                            }
+                    },
+                    _VariablePath = "LocalPCInfo/SystemVolume",
+                    _MaxVariablePath = "100"
+                },
+
+            }, new Settings.Overrides.Logic.Builder.OverrideLogicBuilder().SetDynamicBoolean("_Enabled", new BooleanOr(new List<Evaluatable<bool>> { new BooleanKeyDownWithTimer(Keys.VolumeUp, 3), new BooleanKeyDownWithTimer(Keys.VolumeDown, 3) }))));
+        }
+
         public override void Reset()
         {
             base.Reset();
+            setVolumeOverlay();
+
             Layers = new System.Collections.ObjectModel.ObservableCollection<Layer>()
             {
                 new Layer("Ctrl Shortcuts", new ShortcutAssistantLayerHandler()
@@ -127,9 +160,10 @@ namespace Aurora.Profiles.Desktop
                         }),
                         _BlinkThreshold = 0.0,
                         _BlinkDirection = false,
-                        _VariablePath = "LocalPCInfo/CPUUsage",
+                        _VariablePath = "LocalPCInfo/CPU/Usage",
                         _MaxVariablePath = "100"
                     },
+                    EnableSmoothing = true
                 }),
                 new Layer("RAM Usage", new PercentLayerHandler()
                 {
@@ -145,9 +179,10 @@ namespace Aurora.Profiles.Desktop
                         }),
                         _BlinkThreshold = 0.0,
                         _BlinkDirection = false,
-                        _VariablePath = "LocalPCInfo/MemoryUsed",
-                        _MaxVariablePath = "LocalPCInfo/MemoryTotal"
+                        _VariablePath = "LocalPCInfo/RAM/Used",
+                        _MaxVariablePath = "LocalPCInfo/RAM/Total"
                     },
+                    EnableSmoothing = true
                 }),
                 new Layer("Interactive Layer", new InteractiveLayerHandler()
                 {
@@ -164,6 +199,12 @@ namespace Aurora.Profiles.Desktop
                 }
                 )
             };
+        }
+
+        [OnDeserialized]
+        void OnDeserialized(StreamingContext context)
+        {
+
         }
     }
 }

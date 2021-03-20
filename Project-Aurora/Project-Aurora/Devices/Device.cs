@@ -1055,6 +1055,7 @@ namespace Aurora.Devices
         [Description("Profile Key 6")]
         Profile_Key6 = 168,
 
+        /// <summary>
         /// Numpad 00
         /// </summary>
         [Description("Numpad 00")]
@@ -1294,6 +1295,11 @@ namespace Aurora.Devices
         [Description("Mousepad Light 15")]
         MOUSEPADLIGHT15 = 215,
 
+        ///<summary>
+        /// Calculator Key
+        /// </summary>
+        [Description("Calculator")]
+        CALC = 216,
 
         /// <summary>
         /// None

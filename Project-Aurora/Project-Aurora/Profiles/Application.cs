@@ -17,12 +17,12 @@ using System.Runtime.CompilerServices;
 using Newtonsoft.Json.Serialization;
 using System.Collections.ObjectModel;
 using Aurora.Settings;
+using System.ComponentModel;
 
 namespace Aurora.Profiles
 {
-    public class LightEventConfig : NotifyPropertyChangedEx
+    public class LightEventConfig : INotifyPropertyChanged
     {
-        //TODO: Add NotifyPropertyChanged to properties
         public string[] ProcessNames { get; set; }
 
         /// <summary>One or more REGULAR EXPRESSIONS that can be used to match the title of an application</summary>
@@ -48,30 +48,27 @@ namespace Aurora.Profiles
 
         public string IconURI { get; set; }
 
-        public HashSet<string> ExtraAvailableLayers { get; set; } = new HashSet<string>();
+        public HashSet<Type> ExtraAvailableLayers { get; } = new HashSet<Type>();
 
-        protected LightEventType? type = LightEventType.Normal;
-        public LightEventType? Type
-        {
-            get { return type; }
-            set
-            {
-                object old = type;
-                object newVal = value;
-                type = value;
-                InvokePropertyChanged(old, newVal);
-            }
+        public bool EnableByDefault { get; set; } = true;
+        public bool EnableOverlaysByDefault { get; set; } = true;
+
+        public event PropertyChangedEventHandler PropertyChanged;
+        
+        public LightEventConfig WithLayer<T>() where T : ILayerHandler {
+            ExtraAvailableLayers.Add(typeof(T));
+            return this;
         }
     }
 
-    public class Application : ObjectSettings<ApplicationSettings>, IInit, ILightEvent, IDisposable
+    public class Application : ObjectSettings<ApplicationSettings>, IInit, ILightEvent, INotifyPropertyChanged, IDisposable
     {
         #region Public Properties
         public bool Initialized { get; protected set; } = false;
         public bool Disposed { get; protected set; } = false;
         public ApplicationProfile Profile { get; set; }
         public ObservableCollection<ApplicationProfile> Profiles { get; set; }
-        public Dictionary<string, Tuple<Type, Type>> ParameterLookup { get; set; } //Key = variable path, Value = {Return type, Parameter type}
+        public GameStateParameterLookup ParameterLookup { get; set; }
         public bool HasLayers { get; set; }
         public event EventHandler ProfileChanged;
         public bool ScriptsLoaded { get; protected set; }
@@ -79,19 +76,7 @@ namespace Aurora.Profiles
         public string ID { get { return Config.ID; } }
         public Type GameStateType { get { return Config.GameStateType; } }
         public bool IsEnabled { get { return Settings.IsEnabled; } }
-        public event PropertyChangedExEventHandler PropertyChanged;
-        protected LightEventType type;
-        public LightEventType Type
-        {
-            get { return type; }
-            protected set
-            {
-                object old = type;
-                object newVal = value;
-                type = value;
-                InvokePropertyChanged(old, newVal);
-            }
-        }
+        public bool IsOverlayEnabled { get { return Settings.IsOverlayEnabled; } }
         #endregion
 
         #region Internal Properties
@@ -104,8 +89,7 @@ namespace Aurora.Profiles
         internal Dictionary<string, IEffectScript> EffectScripts { get; set; }
         #endregion
 
-        #region Private Fields/Properties
-        #endregion
+        public event PropertyChangedEventHandler PropertyChanged;
 
         public Application(LightEventConfig config)
         {
@@ -114,12 +98,20 @@ namespace Aurora.Profiles
             config.Event.Application = this;
             config.Event.ResetGameState();
             Profiles = new ObservableCollection<ApplicationProfile>();
+            Profiles.CollectionChanged += (sender, e) => {
+                if (e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Add) {
+                    foreach (ApplicationProfile prof in e.NewItems)
+                    {
+                        prof.SetApplication(this);
+                    }
+                }
+            };
             EffectScripts = new Dictionary<string, IEffectScript>();
             if (config.GameStateType != null)
-                ParameterLookup = Utils.GameStateUtils.ReflectGameStateParameters(config.GameStateType);
+                ParameterLookup = new GameStateParameterLookup(config.GameStateType);
         }
 
-        public bool Initialize()
+        public virtual bool Initialize()
         {
             if (Initialized)
                 return Initialized;
@@ -130,10 +122,20 @@ namespace Aurora.Profiles
             return Initialized;
         }
 
-        protected void InvokePropertyChanged(object oldValue, object newValue, [CallerMemberName] string propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedExEventArgs(propertyName, oldValue, newValue));
+        protected override void SettingsCreateHook() {
+            Settings.IsEnabled = Config.EnableByDefault;
+            Settings.IsOverlayEnabled = Config.EnableOverlaysByDefault;
         }
+
+        /// <summary>Enables the use of a non-default layer for this application.</summary>
+        protected void AllowLayer<T>() where T : ILayerHandler => Config.WithLayer<T>();
+
+        /// <summary>Determines if the given layer handler type can be used by this application. This is the case either if it is a default handler or has explicitly been allowed for this application.</summary>
+        public bool IsAllowedLayer(Type type) => Global.LightingStateManager.LayerHandlers.TryGetValue(type, out var def) && (def.IsDefault || Config.ExtraAvailableLayers.Contains(type));
+
+        /// <summary>Gets a list of layers that are allowed to be used by this application.</summary>
+        public IEnumerable<LayerHandlerMeta> AllowedLayers
+            => Global.LightingStateManager.LayerHandlers.Values.Where(val => val.IsDefault || Config.ExtraAvailableLayers.Contains(val.Type));
 
         public void SwitchToProfile(ApplicationProfile newProfileSettings)
         {
@@ -173,36 +175,21 @@ namespace Aurora.Profiles
             this.Profiles.Add(profile);
         }
 
-        protected void CreateDefaultProfile()
+        protected ApplicationProfile CreateDefaultProfile()
         {
-            if (Disposed)
-                return;
-
-            ApplicationProfile _newProfile = CreateNewProfile("default");
-
-            Profiles.Add(_newProfile);
-
-            SaveProfiles();
-
-            SwitchToProfile(_newProfile);
+            return AddNewProfile($"default");
         }
 
-        public void SaveDefaultProfile()
+        public ApplicationProfile NewDefaultProfile()
         {
-            if (Disposed)
-                return;
-
-            ApplicationProfile _newProfile = CreateNewProfile($"Profile {Profiles.Count + 1}");
-
-            Profiles.Add(_newProfile);
-
-            SaveProfiles();
-
-            SwitchToProfile(_newProfile);
+            return AddNewProfile($"Profile {Profiles.Count + 1}");
         }
 
         public ApplicationProfile AddNewProfile(String profileName)
         {
+            if (Disposed)
+                return null;
+
             ApplicationProfile _newProfile = CreateNewProfile(profileName);
 
             Profiles.Add(_newProfile);
@@ -267,7 +254,7 @@ namespace Aurora.Profiles
 
         public virtual string GetProfileFolderPath()
         {
-            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Aurora", "Profiles", Config.ID);
+            return Path.Combine(Global.AppDataDirectory, "Profiles", Config.ID);
         }
 
         public void ResetProfile()
@@ -311,35 +298,32 @@ namespace Aurora.Profiles
                         if (String.IsNullOrWhiteSpace(prof.ProfileName))
                             prof.ProfileName = Path.GetFileNameWithoutExtension(path);
 
-                        foreach (Layer lyr in prof.Layers.ToList())
-                        {
-                            //Remove any Layers that have non-functional handlers
-                            if (lyr.Handler == null || !Global.LightingStateManager.LayerHandlers.ContainsKey(lyr.Handler.ID))
-                            {
-                                prof.Layers.Remove(lyr);
-                                continue;
+                        // Initalises a collection, setting the layers' profile/application property and adding events to them and the collections to save to disk.
+                        void InitialiseLayerCollection(ObservableCollection<Layer> collection) { 
+                            foreach (Layer lyr in collection.ToList()) {
+                                //Remove any Layers that have non-functional handlers
+                                if (lyr.Handler == null || !Global.LightingStateManager.LayerHandlers.ContainsKey(lyr.Handler.GetType())) {
+                                    prof.Layers.Remove(lyr);
+                                    continue;
+                                }
+
+                                lyr.PropertyChanged += SaveProfilesEvent;
                             }
 
-                            lyr.AnythingChanged += this.SaveProfilesEvent;
-                            lyr.SetProfile(this);
+                            collection.CollectionChanged += (_, e) => {
+                                if (e.NewItems != null)
+                                    foreach (Layer lyr in e.NewItems)
+                                        if (lyr != null)
+                                            lyr.PropertyChanged += SaveProfilesEvent;
+                                SaveProfiles();
+                            };
                         }
 
-                        prof.Layers.CollectionChanged += (s, e) =>
-                        {
-                            if (e.NewItems != null)
-                            {
-                                foreach (Layer lyr in e.NewItems)
-                                {
-                                    if (lyr == null)
-                                        continue;
-                                    lyr.AnythingChanged += this.SaveProfilesEvent;
-                                }
-                            }
-                            this.SaveProfiles();
-                        };
+                        // Call the above setup method on the regular layers and the overlay layers.
+                        InitialiseLayerCollection(prof.Layers);
+                        InitialiseLayerCollection(prof.OverlayLayers);
 
                         prof.PropertyChanged += Profile_PropertyChanged;
-
                         return prof;
                     }
                 }
@@ -358,7 +342,6 @@ namespace Aurora.Profiles
                     }
 
                     File.Move(path, newPath);
-                    this.SaveProfile((ApplicationProfile)Activator.CreateInstance(Config.ProfileType), path);
                     MessageBox.Show($"Default profile for {this.Config.Name} could not be loaded.\nMoved to {newPath}, reset to default settings.\nException={exc.Message}", "Error loading default profile", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
@@ -368,13 +351,19 @@ namespace Aurora.Profiles
 
         protected virtual void LoadProfilesError(object sender, Newtonsoft.Json.Serialization.ErrorEventArgs e)
         {
-            if (e.CurrentObject.GetType().Equals(typeof(ObservableCollection<Layer>)))
-                e.ErrorContext.Handled = true;
-
-            if (e.CurrentObject.GetType() == typeof(Layer) && e.ErrorContext.Member.Equals("Handler"))
+            if (e.CurrentObject != null)
             {
-                ((Layer)e.ErrorContext.OriginalObject).Handler = null;
-                e.ErrorContext.Handled = true;
+                if (e.CurrentObject.GetType().Equals(typeof(ObservableCollection<Layer>)))
+                    e.ErrorContext.Handled = true;
+
+                if (e.CurrentObject.GetType() == typeof(Layer) && e.ErrorContext.Member.Equals("Handler"))
+                {
+                    ((Layer)e.ErrorContext.OriginalObject).Handler = null;
+                    e.ErrorContext.Handled = true;
+                }
+            } else if (e.ErrorContext.Path.Equals("$type") && e.ErrorContext.Member == null)
+            {
+                MessageBox.Show($"The profile type for {this.Config.Name} has been changed, your profile will be reset and your old one moved to have the extension '.corrupted', ignore the following error", "Profile type changed", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
 
@@ -408,6 +397,11 @@ namespace Aurora.Profiles
             this.Config.Event.UpdateLights(frame);
         }
 
+        public virtual void UpdateOverlayLights(EffectFrame frame) {
+            if (Disposed) return;
+            Config.Event.UpdateOverlayLights(frame);
+        }
+
         public virtual void SetGameState(IGameState state)
         {
             if (Disposed)
@@ -422,6 +416,22 @@ namespace Aurora.Profiles
                 return;
 
             Config.Event.ResetGameState();
+        }
+        
+        public virtual void OnStart()
+        {
+            if (Disposed)
+                return;
+
+            Config.Event.OnStart();
+        }
+
+        public virtual void OnStop()
+        {
+            if (Disposed)
+                return;
+
+            Config.Event.OnStop();
         }
 
         public virtual void UpdateEffectScripts(Queue<EffectLayer> layers, IGameState state = null)

@@ -1,5 +1,6 @@
 ﻿using Aurora.EffectsEngine;
 using Aurora.Profiles;
+using Aurora.Settings.Overrides;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -31,16 +32,13 @@ namespace Aurora.Settings.Layers
         }
     }
 
+    [LogicOverrideIgnoreProperty("_PrimaryColor")]
+    [LogicOverrideIgnoreProperty("_SecondaryColor")]
     public class ImageLayerHandler : LayerHandler<ImageLayerHandlerProperties>
     {
         private EffectLayer temp_layer;
         private System.Drawing.Image _loaded_image = null;
         private string _loaded_image_path = "";
-
-        public ImageLayerHandler()
-        {
-            _ID = "Image";
-        }
 
         protected override UserControl CreateControl()
         {

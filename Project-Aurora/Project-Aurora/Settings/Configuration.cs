@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -6,10 +6,12 @@ using System.Drawing;
 using System.IO;
 using System.Text;
 using Aurora.Profiles.Generic_Application;
-using Aurora.Profiles.Overlays;
-using Aurora.Profiles.Overlays.SkypeOverlay;
 using Aurora.Profiles;
 using Newtonsoft.Json.Serialization;
+using Aurora.Utils;
+using System.Collections.ObjectModel;
+using System.Collections.Concurrent;
+using Aurora.Settings.Overrides.Logic;
 
 namespace Aurora.Settings
 {
@@ -34,7 +36,13 @@ namespace Aurora.Settings
         /// Progressive (Gradual)
         /// </summary>
         [Description("Progressive (Gradual)")]
-        Progressive_Gradual = 2
+        Progressive_Gradual = 2,
+
+        [Description("Only highest active key (foreground color)")]
+        Highest_Key = 3,
+
+        [Description("Only highest active key (blended color)")]
+        Highest_Key_Blend = 4
     }
 
     public enum IdleEffects
@@ -56,7 +64,9 @@ namespace Aurora.Settings
         [Description("Blackout")]
         Blackout = 7,
         [Description("Matrix")]
-        Matrix = 8
+        Matrix = 8,
+        [Description("Rain Fall Smooth")]
+        RainFallSmooth = 9
     }
 
     /// <summary>
@@ -170,9 +180,13 @@ namespace Aurora.Settings
         Logitech_G810 = 102,
         [Description("Logitech - GPRO")]
         Logitech_GPRO = 103,
-		[Description("Logitech - G213")]
+        [Description("Logitech - G213")]
         Logitech_G213 = 104,
-
+		[Description("Logitech - G815")]
+        Logitech_G815 = 105,
+        [Description("Logitech - G513")]
+        Logitech_G513 = 106,
+		
         //Corsair range is 200-299
         [Description("Corsair - K95")]
         Corsair_K95 = 200,
@@ -187,8 +201,10 @@ namespace Aurora.Settings
         [Description("Corsair - K68")]
         Corsair_K68 = 205,
         [Description("Corsair - K70 MK2")]
-        Corsair_K70MK2 = 206
-            ,
+        Corsair_K70MK2 = 206,
+        [Description("Corsair - STRAFE MK2")]
+        Corsair_STRAFE_MK2 = 207,
+
         //Razer range is 300-399
         [Description("Razer - Blackwidow")]
         Razer_Blackwidow = 300,
@@ -210,6 +226,8 @@ namespace Aurora.Settings
         Masterkeys_Pro_M = 502,
         [Description("Cooler Master - Masterkeys MK750")]
         Masterkeys_MK750 = 503,
+        [Description("Cooler Master - Masterkeys MK730")]
+        Masterkeys_MK730 = 504,
 
         //Roccat range is 600-699
         [Description("Roccat Ryos")]
@@ -225,17 +243,55 @@ namespace Aurora.Settings
 
         [Description("Wooting One")]
         Wooting_One = 800,
+        [Description("Wooting Two")]
+        Wooting_Two = 801,
 
         [Description("Asus Strix Flare")]
         Asus_Strix_Flare = 900,
+        [Description("Asus Strix Scope")]
+        Asus_Strix_Scope = 901,
 
         //Drevo range is 1000-1099
         [Description("Drevo BladeMaster")]
         Drevo_BladeMaster = 1000,
 
-	//Creative range is 1100-1199
+        //Creative range is 1100-1199
         [Description("SoundBlasterX VanguardK08")]
         SoundBlasterX_Vanguard_K08 = 1100,
+
+ 
+
+        [Description("UNIWILL2ND (ANSI)")]
+        Uniwill2ND_35X_1 = 2101,
+        [Description("UNIWILL2ND (ISO)")]
+        Uniwill2ND_35X_2 = 2102,
+
+        [Description("UNIWILL2P1 (ISO)")]
+        Uniwill2P1_550_UK = 2103,
+        [Description("UNIWILL2P1 (ANSI)")]
+        Uniwill2P1_550_US = 2104,
+        [Description("UNIWILL2P1 (ABNT)")]
+        Uniwill2P1_550_BR = 2105,
+        [Description("UNIWILL2P1 (JIS)")]
+        Uniwill2P1_550_JP = 2106,
+
+
+        [Description("UNIWILL2P2 (ISO)")]
+        Uniwill2P2_650_UK = 2107,
+        [Description("UNIWILL2P2 (ANSI)")]
+        Uniwill2P2_650_US = 2108,
+        [Description("UNIWILL2P2 (ABNT)")]
+        Uniwill2P2_650_BR = 2109,
+        [Description("UNIWILL2P2 (JIS)")]
+        Uniwill2P2_650_JP = 2110,
+
+ 
+        //Ducky range is 1200-1299
+        [Description("Ducky Shine 7/One 2 RGB")]
+        Ducky_Shine_7 = 1200,
+        [Description("Ducky One 2 RGB TKL")]
+        Ducky_One_2_RGB_TKL = 1201,
+ 
     }
 
     public enum PreferredKeyboardLocalization
@@ -269,7 +325,17 @@ namespace Aurora.Settings
         [Description("DVORAK (INT)")]
         dvorak_int = 13,
         [Description("Hungarian")]
-        hu = 14
+        hu = 14,
+        [Description("Italian")]
+        it = 15,
+        [Description("Latin America")]
+        la = 16,
+        [Description("Spanish")]
+        es = 17,
+        [Description("ISO - Automatic (Experimental)")]
+        iso = 18,
+        [Description("ANSI - Automatic (Experimental)")]
+        ansi = 19,
     }
 
     public enum PreferredMouse
@@ -305,13 +371,18 @@ namespace Aurora.Settings
         //Cooler Master range is 500-599
 
         //Roccat range is 600-699
+        [Description("Roccat - Kone Pure")]
+        Roccat_Kone_Pure = 600,
 
         //Steelseries range is 700-799
         [Description("SteelSeries - Rival 300")]
         SteelSeries_Rival_300 = 700,
         [Description("SteelSeries - Rival 300 HP OMEN Edition")]
         SteelSeries_Rival_300_HP_OMEN_Edition = 701,
-
+        [Description("SteelSeries - QcK Prism Mousepad + Mouse")]
+        SteelSeries_QcK_Prism = 702,
+        [Description("SteelSeries - Two-zone QcK Mousepad + Mouse")]
+        SteelSeries_QcK_2_Zone = 703,
         //Asus range is 900-999
         [Description("Asus - Pugio")]
         Asus_Pugio = 900
@@ -349,8 +420,10 @@ namespace Aurora.Settings
         Fine = 12
     }
 
-    public class Configuration : Settings
+    public class Configuration : INotifyPropertyChanged
     {
+        public event PropertyChangedEventHandler PropertyChanged;
+
         //First Time Installs
         public bool redist_first_time;
         public bool logitech_first_time;
@@ -365,30 +438,23 @@ namespace Aurora.Settings
         public bool allow_wrappers_in_background;
         public bool allow_all_logitech_bitmaps;
 
-        private bool useVolumeAsBrightness = false;
-        [JsonProperty(PropertyName = "use_volume_as_brightness")]
-        public bool UseVolumeAsBrightness { get { return useVolumeAsBrightness; } set { useVolumeAsBrightness = value; InvokePropertyChanged(); } }
+        [JsonProperty("use_volume_as_brightness")]
+        public bool UseVolumeAsBrightness { get; set; }
 
-        private float globalBrightness = 1.0f;
-        [JsonProperty(PropertyName = "global_brightness")]
-        public float GlobalBrightness { get { return globalBrightness; } set { globalBrightness = value; InvokePropertyChanged(); } }
+        [JsonProperty("global_brightness")]
+        public float GlobalBrightness { get; set; } = 1.0f;
 
-        private float keyboardBrightness = 1.0f;
-        [JsonProperty(PropertyName = "keyboard_brightness_modifier")]
-        public float KeyboardBrightness { get { return keyboardBrightness; } set { keyboardBrightness = value; InvokePropertyChanged(); } }
+        [JsonProperty("keyboard_brightness_modifier")]
+        public float KeyboardBrightness { get; set; } = 1.0f;
 
-        private float peripheralBrightness = 1.0f;
-        [JsonProperty(PropertyName = "peripheral_brightness_modifier")]
-        public float PeripheralBrightness { get { return peripheralBrightness; } set { peripheralBrightness = value; InvokePropertyChanged(); } }
+        [JsonProperty("peripheral_brightness_modifier")]
+        public float PeripheralBrightness { get; set; } = 1.0f;
 
-        private bool getDevReleases = false;
-        public bool GetDevReleases { get { return getDevReleases; } set { getDevReleases = value; InvokePropertyChanged(); } }
-
-        private bool highPriority = false;
-        public bool HighPriority { get { return highPriority; } set { highPriority = value; InvokePropertyChanged(); } }
-
-        private BitmapAccuracy bitmapAccuracy = BitmapAccuracy.Okay;
-        public BitmapAccuracy BitmapAccuracy { get { return bitmapAccuracy; } set { bitmapAccuracy = value; InvokePropertyChanged(); } }
+        public bool GetDevReleases { get; set; } = false;
+        public bool GetPointerUpdates { get; set; } = true;
+        public bool HighPriority { get; set; } = false;
+        public BitmapAccuracy BitmapAccuracy { get; set; } = BitmapAccuracy.Okay;
+        public bool EnableAudioCapture { get; set; } = false;
 
         public bool updates_check_on_start_up;
         public bool start_silently;
@@ -430,13 +496,28 @@ namespace Aurora.Settings
         public int idle_amount;
         public float idle_frequency;
 
+        //Hardware Monitor
+        public int HardwareMonitorUpdateRate { get; set; } = 500;
+        public bool HardwareMonitorUseAverageValues { get; set; } = true;
+
         public VariableRegistry VarRegistry;
 
-        //Overlay Settings
-        public VolumeOverlaySettings volume_overlay_settings;
-        public SkypeOverlaySettings skype_overlay_settings;
+        //BitmapDebug Data
+        public bool BitmapDebugTopMost { get; set; } = false;
+        public WINDOWPLACEMENT BitmapPlacement { get; set; }
+        public bool BitmapWindowOnStartUp { get; set; } = false;
+
+        //httpDebug Data
+        public bool HttpDebugTopMost { get; set; } = false;
+        public WINDOWPLACEMENT HttpDebugPlacement { get; set; }
+        public bool HttpWindowOnStartUp { get; set; } = false;
+
+        public ObservableConcurrentDictionary<string, IEvaluatable> EvaluatableTemplates { get; set; } = new ObservableConcurrentDictionary<string, IEvaluatable>();
 
         public List<string> ProfileOrder { get; set; } = new List<string>();
+
+        public string GSIAudioRenderDevice { get; set; } = AudioDeviceProxy.DEFAULT_DEVICE_ID;
+        public string GSIAudioCaptureDevice { get; set; } = AudioDeviceProxy.DEFAULT_DEVICE_ID;
 
         public Configuration()
         {
@@ -455,7 +536,7 @@ namespace Aurora.Settings
             allow_all_logitech_bitmaps = true;
             GlobalBrightness = 1.0f;
             KeyboardBrightness = 1.0f;
-            peripheralBrightness = 1.0f;
+            PeripheralBrightness = 1.0f;
             updates_check_on_start_up = true;
             start_silently = false;
             close_mode = AppExitMode.Ask;
@@ -473,7 +554,8 @@ namespace Aurora.Settings
             devices_disabled = new HashSet<Type>();
             devices_disabled.Add(typeof(Devices.Dualshock.DualshockDevice));
             devices_disabled.Add(typeof(Devices.AtmoOrbDevice.AtmoOrbDevice));
-            OverlaysInPreview = false;
+            devices_disabled.Add(typeof(Devices.NZXT.NZXTDevice));
+            OverlaysInPreview = true;
 
             //Blackout and Night theme
             time_based_dimming_enabled = false;
@@ -498,44 +580,66 @@ namespace Aurora.Settings
             idle_amount = 5;
             idle_frequency = 2.5f;
 
-            //Overlay Settings
-            volume_overlay_settings = new VolumeOverlaySettings();
-            skype_overlay_settings = new SkypeOverlaySettings();
+            //Debug
+            BitmapDebugTopMost = false;
+            HttpDebugTopMost = false;
 
             //ProfileOrder = new List<string>(ApplicationProfiles.Keys);
 
             VarRegistry = new VariableRegistry();
+
+            EvaluatableTemplates = new ObservableConcurrentDictionary<string, IEvaluatable>();
+        }
+
+        /// <summary>
+        /// Called after the configuration file has been deserialized or created for the first time.
+        /// </summary>
+        public void OnPostLoad() {
+            if (!unified_hid_disabled) {
+                devices_disabled.Add(typeof(Devices.UnifiedHID.UnifiedHIDDevice));
+                unified_hid_disabled = true;
+            }
+
+            EvaluatableTemplates.CollectionChanged += (sender, e) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(EvaluatableTemplates)));
+        }
+    }
+
+    public static class ExtensionHelpers
+    {
+        public static bool IsAutomaticGeneration(this PreferredKeyboardLocalization self)
+        {
+            return self == PreferredKeyboardLocalization.ansi || self == PreferredKeyboardLocalization.iso;
+        }
+
+        public static bool IsANSI(this PreferredKeyboardLocalization self)
+        {
+            return self == PreferredKeyboardLocalization.ansi || self == PreferredKeyboardLocalization.dvorak || self == PreferredKeyboardLocalization.us;
         }
     }
 
     public class ConfigManager
     {
-        private static string ConfigPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Aurora", "Config");
+        private static string ConfigPath = Path.Combine(Global.AppDataDirectory, "Config");
         private const string ConfigExtension = ".json";
 
         private static long _last_save_time = 0L;
-        private readonly static long _save_interval = 1000L;
+        private readonly static long _save_interval = 300L;
 
         public static Configuration Load()
         {
+            Configuration config;
             var configPath = ConfigPath + ConfigExtension;
 
             if (!File.Exists(configPath))
-                return CreateDefaultConfigurationFile();
-
-            string content = File.ReadAllText(configPath, Encoding.UTF8);
-
-            if (String.IsNullOrWhiteSpace(content))
-                return CreateDefaultConfigurationFile();
-
-            Configuration config = JsonConvert.DeserializeObject<Configuration>(content, new JsonSerializerSettings { ObjectCreationHandling = ObjectCreationHandling.Replace, TypeNameHandling = TypeNameHandling.All, SerializationBinder = Aurora.Utils.JSONUtils.SerializationBinder, Error = DeserializeErrorHandler });
-
-            if (!config.unified_hid_disabled)
-            {
-                config.devices_disabled.Add(typeof(Devices.UnifiedHID.UnifiedHIDDevice));
-                config.unified_hid_disabled = true;
+                config = CreateDefaultConfigurationFile();
+            else {
+                string content = File.ReadAllText(configPath, Encoding.UTF8);
+                config = string.IsNullOrWhiteSpace(content)
+                    ? CreateDefaultConfigurationFile()
+                    : JsonConvert.DeserializeObject<Configuration>(content, new JsonSerializerSettings { ObjectCreationHandling = ObjectCreationHandling.Replace, TypeNameHandling = TypeNameHandling.All, SerializationBinder = Aurora.Utils.JSONUtils.SerializationBinder, Error = DeserializeErrorHandler });
             }
 
+            config.OnPostLoad();
             return config;
         }
 

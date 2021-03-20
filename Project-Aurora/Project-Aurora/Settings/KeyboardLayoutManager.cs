@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -230,7 +230,7 @@ namespace Aurora.Settings
                 KeyText.Add(key.tag, key.visualName);
 
                 if (key.width + key.margin_left > _region.Width)
-                    _region.Width += (float)(key.width + key.margin_left - location_x);
+                    _region.Width = (float)(key.width + key.margin_left);
                 else if (key.margin_left + added_width < 0)
                 {
                     added_width = -(float)(key.margin_left);
@@ -238,7 +238,7 @@ namespace Aurora.Settings
                 }
 
                 if (key.height + key.margin_top > _region.Height)
-                    _region.Height += (float)(key.height + key.margin_top - location_y);
+                    _region.Height = (float)(key.height + key.margin_top);
                 else if (key.margin_top + added_height < 0)
                 {
                     added_height = -(float)(key.margin_top);
@@ -497,129 +497,192 @@ namespace Aurora.Settings
             //Load keyboard layout
             if (Directory.Exists(layoutsPath))
             {
-                string culture = System.Threading.Thread.CurrentThread.CurrentCulture.Name;
+                PreferredKeyboardLocalization layout = Global.Configuration.keyboard_localization;
 
-                switch (Global.Configuration.keyboard_localization)
+                if (layout == PreferredKeyboardLocalization.iso)
                 {
-                    case PreferredKeyboardLocalization.None:
-                        break;
-                    case PreferredKeyboardLocalization.intl:
-                        culture = "intl";
-                        break;
-                    case PreferredKeyboardLocalization.us:
-                        culture = "en-US";
-                        break;
-                    case PreferredKeyboardLocalization.uk:
-                        culture = "en-GB";
-                        break;
-                    case PreferredKeyboardLocalization.ru:
-                        culture = "ru-RU";
-                        break;
-                    case PreferredKeyboardLocalization.fr:
-                        culture = "fr-FR";
-                        break;
-                    case PreferredKeyboardLocalization.de:
-                        culture = "de-DE";
-                        break;
-                    case PreferredKeyboardLocalization.jpn:
-                        culture = "ja-JP";
-                        break;
-                    case PreferredKeyboardLocalization.nordic:
-                        culture = "nordic";
-                        break;
-                    case PreferredKeyboardLocalization.tr:
-                        culture = "tr-TR";
-                        break;
-                    case PreferredKeyboardLocalization.swiss:
-                        culture = "de-CH";
-                        break;
-                    case PreferredKeyboardLocalization.abnt2:
-                        culture = "pt-BR";
-                        break;
-                    case PreferredKeyboardLocalization.dvorak:
-                        culture = "dvorak";
-                        break;
-                    case PreferredKeyboardLocalization.dvorak_int:
-                        culture = "dvorak_int";
-                        break;
-                    case PreferredKeyboardLocalization.hu:
-                        culture = "hu-HU";
-                        break;
+                    LoadCulture("iso");
+                    _loaded_localization = layout;
                 }
-
-                switch (culture)
+                else if (layout == PreferredKeyboardLocalization.ansi)
                 {
-                    case ("tr-TR"):
-                        LoadCulture("tr");
-                        break;
-                    case ("ja-JP"):
-                        LoadCulture("jpn");
-                        break;
-                    case ("de-DE"):
-                    case ("hsb-DE"):
-                    case ("dsb-DE"):
-                        _loaded_localization = PreferredKeyboardLocalization.de;
-                        LoadCulture("de");
-                        break;
-                    case ("fr-CH"):
-                    case ("de-CH"):
-                        _loaded_localization = PreferredKeyboardLocalization.swiss;
-                        LoadCulture("swiss");
-                        break;
-                    case ("fr-FR"):
-                    case ("br-FR"):
-                    case ("oc-FR"):
-                    case ("co-FR"):
-                    case ("gsw-FR"):
-                        _loaded_localization = PreferredKeyboardLocalization.fr;
-                        LoadCulture("fr");
-                        break;
-                    case ("cy-GB"):
-                    case ("gd-GB"):
-                    case ("en-GB"):
-                        _loaded_localization = PreferredKeyboardLocalization.uk;
-                        LoadCulture("uk");
-                        break;
-                    case ("ru-RU"):
-                    case ("tt-RU"):
-                    case ("ba-RU"):
-                    case ("sah-RU"):
-                        _loaded_localization = PreferredKeyboardLocalization.ru;
-                        LoadCulture("ru");
-                        break;
-                    case ("en-US"):
-                        _loaded_localization = PreferredKeyboardLocalization.us;
-                        LoadCulture("us");
-                        break;
-                    case ("da-DK"):
-                    case ("se-SE"):
-                    case ("nb-NO"):
-                    case ("nn-NO"):
-                    case ("nordic"):
-                        _loaded_localization = PreferredKeyboardLocalization.nordic;
-                        LoadCulture("nordic");
-                        break;
-                    case ("pt-BR"):
-                        _loaded_localization = PreferredKeyboardLocalization.abnt2;
-                        LoadCulture("abnt2");
-                        break;
-                    case ("dvorak"):
-                        _loaded_localization = PreferredKeyboardLocalization.dvorak;
-                        LoadCulture("dvorak");
-                        break;
-                    case ("dvorak_int"):
-                        _loaded_localization = PreferredKeyboardLocalization.dvorak_int;
-                        LoadCulture("dvorak_int");
-                        break;
-                    case ("hu-HU"):
-                        _loaded_localization = PreferredKeyboardLocalization.hu;
-                        LoadCulture("hu");
-                        break;
-                    default:
-                        _loaded_localization = PreferredKeyboardLocalization.intl;
-                        LoadCulture("intl");
-                        break;
+                    LoadCulture("ansi");
+                    _loaded_localization = layout;
+                }
+                else
+                {
 
+                    string culture = System.Threading.Thread.CurrentThread.CurrentCulture.Name;
+
+                    switch (layout)
+                    {
+                        case PreferredKeyboardLocalization.None:
+                            break;
+                        case PreferredKeyboardLocalization.intl:
+                            culture = "intl";
+                            break;
+                        case PreferredKeyboardLocalization.us:
+                            culture = "en-US";
+                            break;
+                        case PreferredKeyboardLocalization.uk:
+                            culture = "en-GB";
+                            break;
+                        case PreferredKeyboardLocalization.ru:
+                            culture = "ru-RU";
+                            break;
+                        case PreferredKeyboardLocalization.fr:
+                            culture = "fr-FR";
+                            break;
+                        case PreferredKeyboardLocalization.de:
+                            culture = "de-DE";
+                            break;
+                        case PreferredKeyboardLocalization.jpn:
+                            culture = "ja-JP";
+                            break;
+                        case PreferredKeyboardLocalization.nordic:
+                            culture = "nordic";
+                            break;
+                        case PreferredKeyboardLocalization.tr:
+                            culture = "tr-TR";
+                            break;
+                        case PreferredKeyboardLocalization.swiss:
+                            culture = "de-CH";
+                            break;
+                        case PreferredKeyboardLocalization.abnt2:
+                            culture = "pt-BR";
+                            break;
+                        case PreferredKeyboardLocalization.dvorak:
+                            culture = "dvorak";
+                            break;
+                        case PreferredKeyboardLocalization.dvorak_int:
+                            culture = "dvorak_int";
+                            break;
+                        case PreferredKeyboardLocalization.hu:
+                            culture = "hu-HU";
+                            break;
+                        case PreferredKeyboardLocalization.it:
+                            culture = "it-IT";
+                            break;
+                        case PreferredKeyboardLocalization.la:
+                            culture = "es-AR";
+                            break;
+                        case PreferredKeyboardLocalization.es:
+                            culture = "es-ES";
+                            break;
+                        case PreferredKeyboardLocalization.iso:
+                            culture = "iso";
+                            break;
+                        case PreferredKeyboardLocalization.ansi:
+                            culture = "ansi";
+                            break;
+                    }
+
+                    switch (culture)
+                    {
+                        case ("tr-TR"):
+                            LoadCulture("tr");
+                            break;
+                        case ("ja-JP"):
+                            LoadCulture("jpn");
+                            break;
+                        case ("de-DE"):
+                        case ("hsb-DE"):
+                        case ("dsb-DE"):
+                            _loaded_localization = PreferredKeyboardLocalization.de;
+                            LoadCulture("de");
+                            break;
+                        case ("fr-CH"):
+                        case ("de-CH"):
+                            _loaded_localization = PreferredKeyboardLocalization.swiss;
+                            LoadCulture("swiss");
+                            break;
+                        case ("fr-FR"):
+                        case ("br-FR"):
+                        case ("oc-FR"):
+                        case ("co-FR"):
+                        case ("gsw-FR"):
+                            _loaded_localization = PreferredKeyboardLocalization.fr;
+                            LoadCulture("fr");
+                            break;
+                        case ("cy-GB"):
+                        case ("gd-GB"):
+                        case ("en-GB"):
+                            _loaded_localization = PreferredKeyboardLocalization.uk;
+                            LoadCulture("uk");
+                            break;
+                        case ("ru-RU"):
+                        case ("tt-RU"):
+                        case ("ba-RU"):
+                        case ("sah-RU"):
+                            _loaded_localization = PreferredKeyboardLocalization.ru;
+                            LoadCulture("ru");
+                            break;
+                        case ("en-US"):
+                            _loaded_localization = PreferredKeyboardLocalization.us;
+                            LoadCulture("us");
+                            break;
+                        case ("da-DK"):
+                        case ("se-SE"):
+                        case ("nb-NO"):
+                        case ("nn-NO"):
+                        case ("nordic"):
+                            _loaded_localization = PreferredKeyboardLocalization.nordic;
+                            LoadCulture("nordic");
+                            break;
+                        case ("pt-BR"):
+                            _loaded_localization = PreferredKeyboardLocalization.abnt2;
+                            LoadCulture("abnt2");
+                            break;
+                        case ("dvorak"):
+                            _loaded_localization = PreferredKeyboardLocalization.dvorak;
+                            LoadCulture("dvorak");
+                            break;
+                        case ("dvorak_int"):
+                            _loaded_localization = PreferredKeyboardLocalization.dvorak_int;
+                            LoadCulture("dvorak_int");
+                            break;
+                        case ("hu-HU"):
+                            _loaded_localization = PreferredKeyboardLocalization.hu;
+                            LoadCulture("hu");
+                            break;
+                        case ("it-IT"):
+                            _loaded_localization = PreferredKeyboardLocalization.it;
+                            LoadCulture("it");
+                            break;
+                        case ("es-AR"):
+                        case ("es-BO"):
+                        case ("es-CL"):
+                        case ("es-CO"):
+                        case ("es-CR"):
+                        case ("es-EC"):
+                        case ("es-MX"):
+                        case ("es-PA"):
+                        case ("es-PY"):
+                        case ("es-PE"):
+                        case ("es-UY"):
+                        case ("es-VE"):
+                        case ("es-419"):
+                            _loaded_localization = PreferredKeyboardLocalization.la;
+                            LoadCulture("la");
+                            break;
+                        case ("es-ES"):
+                            _loaded_localization = PreferredKeyboardLocalization.es;
+                            LoadCulture("es");
+                            break;
+                        case ("iso"):
+                            _loaded_localization = PreferredKeyboardLocalization.iso;
+                            LoadCulture("iso");
+                            break;
+                        case ("ansi"):
+                            _loaded_localization = PreferredKeyboardLocalization.ansi;
+                            LoadCulture("ansi");
+                            break;
+                        default:
+                            _loaded_localization = PreferredKeyboardLocalization.intl;
+                            LoadCulture("intl");
+                            break;
+
+                    }
                 }
             }
 
@@ -633,8 +696,12 @@ namespace Aurora.Settings
                 layoutConfigPath = Path.Combine(layoutsPath, "logitech_gpro.json");
             else if (keyboard_preference == PreferredKeyboard.Logitech_G410)
                 layoutConfigPath = Path.Combine(layoutsPath, "logitech_g410.json");
-			else if (keyboard_preference == PreferredKeyboard.Logitech_G213)
-                    layoutConfigPath = Path.Combine(layoutsPath, "logitech_g213.json");
+			else if (keyboard_preference == PreferredKeyboard.Logitech_G815)
+                layoutConfigPath = Path.Combine(layoutsPath, "logitech_g815.json");
+            else if (keyboard_preference == PreferredKeyboard.Logitech_G513)
+                layoutConfigPath = Path.Combine(layoutsPath, "logitech_g513.json");
+            else if (keyboard_preference == PreferredKeyboard.Logitech_G213)
+                layoutConfigPath = Path.Combine(layoutsPath, "logitech_g213.json");
             else if (keyboard_preference == PreferredKeyboard.Corsair_K95)
                 layoutConfigPath = Path.Combine(layoutsPath, "corsair_k95.json");
             else if (keyboard_preference == PreferredKeyboard.Corsair_K95_PL)
@@ -647,6 +714,8 @@ namespace Aurora.Settings
                 layoutConfigPath = Path.Combine(layoutsPath, "corsair_k65.json");
             else if (keyboard_preference == PreferredKeyboard.Corsair_STRAFE)
                 layoutConfigPath = Path.Combine(layoutsPath, "corsair_strafe.json");
+            else if (keyboard_preference == PreferredKeyboard.Corsair_STRAFE_MK2)
+                layoutConfigPath = Path.Combine(layoutsPath, "corsair_strafe_mk2.json");
             else if (keyboard_preference == PreferredKeyboard.Corsair_K68)
                 layoutConfigPath = Path.Combine(layoutsPath, "corsair_k68.json");
             else if (keyboard_preference == PreferredKeyboard.Razer_Blackwidow)
@@ -665,6 +734,8 @@ namespace Aurora.Settings
                 layoutConfigPath = Path.Combine(layoutsPath, "masterkeys_pro_m.json");
             else if (keyboard_preference == PreferredKeyboard.Masterkeys_MK750)
                 layoutConfigPath = Path.Combine(layoutsPath, "masterkeys_mk750.json");
+            else if (keyboard_preference == PreferredKeyboard.Masterkeys_MK730)
+                layoutConfigPath = Path.Combine(layoutsPath, "masterkeys_mk730.json");
             else if (keyboard_preference == PreferredKeyboard.Roccat_Ryos)
                 layoutConfigPath = Path.Combine(layoutsPath, "roccat_ryos.json");
             else if (keyboard_preference == PreferredKeyboard.SteelSeries_Apex_M800)
@@ -677,6 +748,8 @@ namespace Aurora.Settings
                 layoutConfigPath = Path.Combine(layoutsPath, "wooting_one.json");
             else if (keyboard_preference == PreferredKeyboard.Asus_Strix_Flare)
                 layoutConfigPath = Path.Combine(layoutsPath, "asus_strix_flare.json");
+            else if (keyboard_preference == PreferredKeyboard.Asus_Strix_Scope)
+                layoutConfigPath = Path.Combine(layoutsPath, "asus_strix_scope.json");
             else if (keyboard_preference == PreferredKeyboard.SoundBlasterX_Vanguard_K08)
                 layoutConfigPath = Path.Combine(layoutsPath, "soundblasterx_vanguardk08.json");
             else if (keyboard_preference == PreferredKeyboard.GenericLaptop)
@@ -685,6 +758,37 @@ namespace Aurora.Settings
                 layoutConfigPath = Path.Combine(layoutsPath, "generic_laptop_numpad.json");
             else if (keyboard_preference == PreferredKeyboard.Drevo_BladeMaster)
                 layoutConfigPath = Path.Combine(layoutsPath, "drevo_blademaster.json");
+            else if (keyboard_preference == PreferredKeyboard.Wooting_Two)
+                layoutConfigPath = Path.Combine(layoutsPath, "wooting_two.json");
+ 
+            else if (keyboard_preference == PreferredKeyboard.Uniwill2ND_35X_1)
+                layoutConfigPath = Path.Combine(layoutsPath, "Uniwill2ND_35X_1.json");
+            else if (keyboard_preference == PreferredKeyboard.Uniwill2ND_35X_2)
+                layoutConfigPath = Path.Combine(layoutsPath, "Uniwill2ND_35X_2.json");
+            //keyboare 2.1
+            else if (keyboard_preference == PreferredKeyboard.Uniwill2P1_550_US)
+                layoutConfigPath = Path.Combine(layoutsPath, "Uniwill2P1_550_US.json");
+            else if (keyboard_preference == PreferredKeyboard.Uniwill2P1_550_UK)
+                layoutConfigPath = Path.Combine(layoutsPath, "Uniwill2P1_550_UK.json");
+            else if (keyboard_preference == PreferredKeyboard.Uniwill2P1_550_BR)
+                layoutConfigPath = Path.Combine(layoutsPath, "Uniwill2P1_550_BR.json");
+            else if (keyboard_preference == PreferredKeyboard.Uniwill2P1_550_JP)
+                layoutConfigPath = Path.Combine(layoutsPath, "Uniwill2P1_550_JP.json");
+            //keyboare 2.2
+            else if (keyboard_preference == PreferredKeyboard.Uniwill2P2_650_US)
+                layoutConfigPath = Path.Combine(layoutsPath, "Uniwill2P2_650_US.json");
+            else if (keyboard_preference == PreferredKeyboard.Uniwill2P2_650_UK)
+                layoutConfigPath = Path.Combine(layoutsPath, "Uniwill2P2_650_UK.json");
+            else if (keyboard_preference == PreferredKeyboard.Uniwill2P2_650_BR)
+                layoutConfigPath = Path.Combine(layoutsPath, "Uniwill2P2_650_BR.json");
+            else if (keyboard_preference == PreferredKeyboard.Uniwill2P2_650_JP)
+                layoutConfigPath = Path.Combine(layoutsPath, "Uniwill2P2_650_JP.json");
+ 
+            else if (keyboard_preference == PreferredKeyboard.Ducky_Shine_7)
+                layoutConfigPath = Path.Combine(layoutsPath, "ducky_shine_7.json");
+            else if (keyboard_preference == PreferredKeyboard.Ducky_One_2_RGB_TKL)
+                layoutConfigPath = Path.Combine(layoutsPath, "ducky_one_2_rgb_tkl.json");
+ 
             else
             {
                 LoadNone();
@@ -775,11 +879,20 @@ namespace Aurora.Settings
                     case PreferredMouse.Clevo_Touchpad:
                         mouse_feature_path = Path.Combine(layoutsPath, "Extra Features", "clevo_touchpad_features.json");
                         break;
+                    case PreferredMouse.Roccat_Kone_Pure:
+                        mouse_feature_path = Path.Combine(layoutsPath, "Extra Features", "roccat_kone_pure_features.json");
+                        break;
                     case PreferredMouse.SteelSeries_Rival_300:
                         mouse_feature_path = Path.Combine(layoutsPath, "Extra Features", "steelseries_rival_300_features.json");
                         break;
                     case PreferredMouse.SteelSeries_Rival_300_HP_OMEN_Edition:
                         mouse_feature_path = Path.Combine(layoutsPath, "Extra Features", "steelseries_rival_300_hp_omen_edition_features.json");
+                        break;
+                    case PreferredMouse.SteelSeries_QcK_Prism:
+                        mouse_feature_path = Path.Combine(layoutsPath, "Extra Features", "steelseries_qck_prism_features.json");
+                        break;
+                    case PreferredMouse.SteelSeries_QcK_2_Zone:
+                        mouse_feature_path = Path.Combine(layoutsPath, "Extra Features", "steelseries_qck_2zone_features.json");
                         break;
                     case PreferredMouse.Asus_Pugio:
                         mouse_feature_path = Path.Combine(layoutsPath, "Extra Features", "asus_pugio_features.json");

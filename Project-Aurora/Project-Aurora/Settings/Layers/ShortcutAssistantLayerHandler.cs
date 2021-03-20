@@ -25,6 +25,7 @@ namespace Aurora.Settings.Layers
 
     public class ShortcutAssistantLayerHandlerProperties : LayerHandlerProperties<ShortcutAssistantLayerHandlerProperties>
     {
+        [Overrides.LogicOverridable("Dim Background")]
         public bool? _DimBackground { get; set; }
 
         [JsonIgnore]
@@ -38,6 +39,7 @@ namespace Aurora.Settings.Layers
         [JsonIgnore]
         public bool MergeModifierKey { get { return (Logic._MergeModifierKey ?? _MergeModifierKey) ?? default(bool); } }
 
+        [Overrides.LogicOverridable("Dim Color")]
         public Color? _DimColor { get; set; }
 
         [JsonIgnore]
@@ -105,17 +107,12 @@ namespace Aurora.Settings.Layers
             _DimBackground = true;
             _DimColor = Color.FromArgb(169, 0, 0, 0);
             _PresentationType = ShortcutAssistantPresentationType.Default;
-            _MergeModifierKey = true;
+            _MergeModifierKey = false;
         }
     }
 
     public class ShortcutAssistantLayerHandler : LayerHandler<ShortcutAssistantLayerHandlerProperties>
     {
-        public ShortcutAssistantLayerHandler()
-        {
-            _ID = "ShortcutAssistant";
-        }
-
         protected override System.Windows.Controls.UserControl CreateControl()
         {
             return new Control_ShortcutAssistantLayer(this);
@@ -126,8 +123,6 @@ namespace Aurora.Settings.Layers
             EffectLayer sc_assistant_layer = new EffectLayer("Shortcut Assistant");
 
             Keys[] heldKeys = Global.InputEvents.PressedKeys;
-
-            
 
             Tree<Keys> _childKeys = Properties.ShortcutKeysTree;
             foreach (var key in heldKeys)
@@ -147,11 +142,19 @@ namespace Aurora.Settings.Layers
 
                 if(shortcutKeys.Length > 0)
                 {
-                    if (Properties.DimBackground)
-                        sc_assistant_layer.Fill(Properties.DimColor);
 
-                    sc_assistant_layer.Set(Utils.KeyUtils.GetDeviceKeys(shortcutKeys, true, !Console.NumberLock), Properties.PrimaryColor);
-                    sc_assistant_layer.Set(Utils.KeyUtils.GetDeviceKeys(heldKeys, true), Properties.PrimaryColor);
+                    Devices.DeviceKeys[] selectedKeys = Utils.KeyUtils.GetDeviceKeys(shortcutKeys, true, !Console.NumberLock)
+                        .Concat(Utils.KeyUtils.GetDeviceKeys(heldKeys, true)).ToArray();
+
+                    if (Properties.DimBackground)
+                    {
+                        Devices.DeviceKeys[] backgroundKeys = Utils.KeyUtils.GetDeviceAllKeys().Except(selectedKeys).ToArray();
+                        sc_assistant_layer.Set(backgroundKeys, Properties.DimColor);
+                        //sc_assistant_layer.Fill(Properties.DimColor);
+                    }
+
+                    sc_assistant_layer.Set(selectedKeys, Properties.PrimaryColor);
+                   
                 }
             }
 
